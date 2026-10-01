@@ -61,6 +61,8 @@ router.get('/public', async (req, res) => {
     if (!subdomain) return res.status(400).json({ error: 'subdomain required' });
     const company = await Company.findOne({ subdomain: subdomain.toLowerCase() });
     if (!company) return res.status(404).json({ error: 'School not found' });
+    if (company.galleryEnabled === false) return res.json([]);
+
     const filter = { companyId: company._id, isPublic: true };
     if (category) filter.category = category;
     const list = await Gallery.find(filter).sort({ eventDate: -1 });
