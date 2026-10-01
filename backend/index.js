@@ -6,6 +6,7 @@ const path = require('path');
 const cron = require('node-cron');
 
 const authRoutes = require('./routes/auth');
+const settingsRoutes = require('./routes/settings');
 const classesRoutes = require('./routes/classes');
 const admissionsRoutes = require('./routes/admissions');
 const galleryRoutes = require('./routes/gallery');
@@ -28,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/classes', classesRoutes);
 app.use('/api/admissions', admissionsRoutes);
 app.use('/api/gallery', galleryRoutes);
