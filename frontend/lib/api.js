@@ -47,6 +47,10 @@ export const api = {
   login: (body) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => request('/auth/me'),
 
+  // Settings
+  getSettings: () => request('/settings'),
+  updateSettings: (formData) => request('/settings/update', { method: 'POST', body: formData }),
+
   // Classes
   createClass: (body) => request('/classes/create', { method: 'POST', body: JSON.stringify(body) }),
   listClasses: (companyId) => request(`/classes/list?companyId=${companyId || ''}`),
