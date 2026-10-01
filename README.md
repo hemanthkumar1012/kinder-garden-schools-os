@@ -63,7 +63,7 @@ Frontend: `http://localhost:3000` (or the next available port shown by Next.js)
 /webinars
 /fees
 /settings
-/public/[subdomain]
+/school/[subdomain]
 ```
 
 ## Application flow
@@ -77,7 +77,7 @@ Frontend: `http://localhost:3000` (or the next available port shown by Next.js)
 7. Review parent feedback and control public approval.
 8. Create webinars, track registrations and manage webinar status.
 9. Create fee plans with clear payment installments and record payments.
-10. Share the public school experience at `/public/YOUR_SUBDOMAIN`.
+10. Share the public school experience at `/school/YOUR_SUBDOMAIN`.
 
 ## Architecture
 
