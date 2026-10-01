@@ -11,6 +11,12 @@ router.post('/create', async (req, res) => {
     if (!companyId || !parentName || !rating) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    const company = await Company.findById(companyId);
+    if (!company) return res.status(404).json({ error: 'School not found' });
+
+    const requiresApproval = company.feedbackApprovalRequired !== false;
+
     const feedback = await Feedback.create({
       companyId,
       parentName,
@@ -19,9 +25,10 @@ router.post('/create', async (req, res) => {
       classId: classId || null,
       rating: Number(rating),
       message: message || '',
-      status: 'pending',
-      isPublic: false,
+      status: requiresApproval ? 'pending' : 'approved',
+      isPublic: !requiresApproval,
     });
+
     console.log(`[WhatsApp] Feedback thanks to ${parentName} rating ${rating}`);
     res.status(201).json(feedback);
   } catch (err) {
