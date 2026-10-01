@@ -110,7 +110,7 @@ router.post('/create', upload.single('photo'), async (req, res) => {
 // GET /api/admissions/list
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const filter = { companyId };
     if (req.query.status) filter.status = req.query.status;
     if (req.query.classId) filter.classId = req.query.classId;
@@ -127,7 +127,7 @@ router.get('/list', auth, async (req, res) => {
 // GET /api/admissions/inquiries
 router.get('/inquiries', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const inquiries = await Admission.find({
       companyId,
       status: { $in: ['new', 'contacted'] },
@@ -141,7 +141,7 @@ router.get('/inquiries', auth, async (req, res) => {
 // GET /api/admissions/stats
 router.get('/stats', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const total = await Student.countDocuments({ companyId });
     const pending = await Student.countDocuments({ companyId, status: 'pending' });
     const admitted = await Student.countDocuments({ companyId, status: 'admitted' });
