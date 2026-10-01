@@ -39,7 +39,7 @@ router.post('/create', async (req, res) => {
 // GET /api/feedback/list
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const filter = { companyId };
     if (req.query.status) filter.status = req.query.status;
     const list = await Feedback.find(filter)
@@ -97,7 +97,7 @@ router.post('/status', auth, async (req, res) => {
 // GET /api/feedback/stats
 router.get('/stats', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const total = await Feedback.countDocuments({ companyId });
     const approved = await Feedback.countDocuments({ companyId, status: 'approved' });
     const pending = await Feedback.countDocuments({ companyId, status: 'pending' });
