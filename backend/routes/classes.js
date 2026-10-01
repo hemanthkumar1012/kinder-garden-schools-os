@@ -50,6 +50,9 @@ router.get('/public', async (req, res) => {
         schoolType: company.schoolType,
         upiId: company.upiId,
         language: company.language,
+        logoUrl: company.logoUrl,
+        galleryEnabled: company.galleryEnabled,
+        feedbackApprovalRequired: company.feedbackApprovalRequired,
       },
       classes,
     });
