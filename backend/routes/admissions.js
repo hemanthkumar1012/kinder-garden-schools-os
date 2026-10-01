@@ -48,9 +48,14 @@ router.post('/create', upload.single('photo'), async (req, res) => {
     const admissionNo = generateAdmissionNo();
 
     // Capacity check
+    const company = await Company.findById(companyId).select('_id');
+    if (!company) return res.status(404).json({ error: 'School not found' });
+
+    let selectedClass = null;
     if (classId) {
-      const cls = await Class.findById(classId);
-      if (cls && cls.studentsCount >= cls.capacity) {
+      selectedClass = await Class.findOne({ _id: classId, companyId });
+      if (!selectedClass) return res.status(400).json({ error: 'Invalid class' });
+      if (selectedClass.studentsCount >= selectedClass.capacity) {
         return res.status(400).json({ error: 'Class is full' });
       }
     }
@@ -79,14 +84,17 @@ router.post('/create', upload.single('photo'), async (req, res) => {
       parentPhone,
       childName,
       childAge: age ? Number(age) : null,
-      interestedClass: interestedClass || '',
+      interestedClass: interestedClass || (selectedClass?.name || ''),
       message: message || '',
       source: source || 'Website',
       status: 'new',
     });
 
-    if (classId) {
-      await Class.findByIdAndUpdate(classId, { $inc: { studentsCount: 1 } });
+    if (selectedClass) {
+      await Class.findOneAndUpdate(
+        { _id: selectedClass._id, companyId },
+        { $inc: { studentsCount: 1 } }
+      );
     }
 
     // Mock WhatsApp log
@@ -151,14 +159,31 @@ router.post('/status', auth, async (req, res) => {
     if (!['admitted', 'rejected', 'waitlist'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
-    const student = await Student.findByIdAndUpdate(studentId, { status }, { new: true });
+
+    const student = await Student.findOne({
+      _id: studentId,
+      companyId: req.companyId,
+    });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    if (status === 'admitted') {
-      await Admission.findOneAndUpdate({ studentId }, { status: 'admitted' });
-    } else if (status === 'rejected') {
-      await Admission.findOneAndUpdate({ studentId }, { status: 'rejected' });
-      // optionally decrement class count if was counted
+    const previousStatus = student.status;
+    student.status = status;
+    await student.save();
+
+    await Admission.findOneAndUpdate(
+      { studentId: student._id, companyId: req.companyId },
+      { status: status === 'waitlist' ? 'contacted' : status }
+    );
+
+    if (
+      previousStatus !== 'rejected' &&
+      status === 'rejected' &&
+      student.classId
+    ) {
+      await Class.findOneAndUpdate(
+        { _id: student.classId, companyId: req.companyId, studentsCount: { $gt: 0 } },
+        { $inc: { studentsCount: -1 } }
+      );
     }
 
     console.log(`[WhatsApp] Status update ${status} for ${student.admissionNo}`);
