@@ -26,7 +26,7 @@ router.post('/create', auth, async (req, res) => {
 // GET /api/classes/list?companyId=
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const classes = await Class.find({ companyId }).sort({ createdAt: -1 });
     res.json(classes);
   } catch (err) {
