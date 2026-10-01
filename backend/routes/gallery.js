@@ -17,10 +17,22 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1e6) + path.extname(file.originalname));
   },
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 }, files: 20 });
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 20,
+  },
+});
 
 // POST /api/gallery/create
-router.post('/create', auth, (req, res, next) => { upload.array('images', 20)(req, res, () => next()); }, async (req, res) => {
+router.post('/create', auth, (req, res, next) => {
+  upload.array('images', 20)(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
   try {
     const { title, category, description, eventDate, isPublic } = req.body;
     if (!title) return res.status(400).json({ error: 'Title required' });
