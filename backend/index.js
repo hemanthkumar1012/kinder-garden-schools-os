@@ -28,6 +28,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'kinder-garden-schools-api',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
+});
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Kinder Garden Schools OS API' });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/classes', classesRoutes);
