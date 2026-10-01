@@ -44,7 +44,7 @@ router.post('/create', auth, (req, res, next) => { upload.array('images', 20)(re
 // GET /api/gallery/list
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const filter = { companyId };
     if (req.query.category) filter.category = req.query.category;
     const list = await Gallery.find(filter).sort({ eventDate: -1, createdAt: -1 });
