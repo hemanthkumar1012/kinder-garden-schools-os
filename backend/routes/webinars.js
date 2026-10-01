@@ -22,7 +22,10 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // POST /api/webinars/create
 router.post('/create', auth, (req, res, next) => {
-  upload.single('thumbnail')(req, res, (err) => { next(); }); // ignore multer errors for JSON
+  upload.single('thumbnail')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
 }, async (req, res) => {
   try {
     const {
@@ -76,7 +79,7 @@ router.get('/public', async (req, res) => {
     if (!company) return res.status(404).json({ error: 'School not found' });
     const list = await Webinar.find({
       companyId: company._id,
-      status: { $ne: 'cancelled' },
+      status: { $in: ['upcoming', 'live'] },
     }).sort({ eventDate: 1 });
     res.json(list);
   } catch (err) {
@@ -87,19 +90,25 @@ router.get('/public', async (req, res) => {
 // POST /api/webinars/register
 router.post('/register', async (req, res) => {
   try {
-    const { webinarId, companyId, parentName, parentPhone, childName, childAge, email } = req.body;
+    const { webinarId, parentName, parentPhone, childName, childAge, email } = req.body;
     if (!webinarId || !parentName || !parentPhone) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
     const webinar = await Webinar.findById(webinarId);
     if (!webinar) return res.status(404).json({ error: 'Webinar not found' });
+
+    if (!['upcoming', 'live'].includes(webinar.status)) {
+      return res.status(400).json({ error: 'Registration is closed for this webinar' });
+    }
+
     if (webinar.registeredCount >= webinar.maxParticipants) {
       return res.status(400).json({ error: 'Webinar is full' });
     }
 
     const reg = await WebinarRegistration.create({
       webinarId,
-      companyId: companyId || webinar.companyId,
+      companyId: webinar.companyId,
       parentName,
       parentPhone,
       childName: childName || '',
@@ -121,7 +130,17 @@ router.get('/registrations', auth, async (req, res) => {
   try {
     const { webinarId } = req.query;
     if (!webinarId) return res.status(400).json({ error: 'webinarId required' });
-    const list = await WebinarRegistration.find({ webinarId }).sort({ createdAt: -1 });
+    const webinar = await Webinar.findOne({
+      _id: webinarId,
+      companyId: req.companyId,
+    }).select('_id');
+
+    if (!webinar) return res.status(404).json({ error: 'Webinar not found' });
+
+    const list = await WebinarRegistration.find({
+      webinarId,
+      companyId: req.companyId,
+    }).sort({ createdAt: -1 });
     res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
