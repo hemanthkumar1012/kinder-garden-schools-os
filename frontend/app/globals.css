@@ -267,6 +267,32 @@ textarea {
   animation: floatIn 480ms ease both;
 }
 
+/* Keep the older page classes inside the same light-green visual system. */
+.bg-slate-50 { background-color: #f6faf8 !important; }
+.bg-slate-100 { background-color: #f1f7f3 !important; }
+.bg-slate-900 { background-color: #17382b !important; }
+.bg-slate-800 { background-color: #234b3a !important; }
+.text-slate-900 { color: #18372a !important; }
+.text-slate-800 { color: #234b3a !important; }
+.text-slate-700 { color: #486357 !important; }
+.text-slate-500 { color: #71847a !important; }
+.text-slate-400 { color: #8a9b93 !important; }
+.text-slate-300 { color: #a5b6ae !important; }
+.border-slate-200 { border-color: #dcebe2 !important; }
+.border-slate-300 { border-color: #d4e5dc !important; }
+.border-slate-100 { border-color: #edf3ef !important; }
+.bg-teal-50 { background-color: #f1fbf6 !important; }
+.bg-teal-100 { background-color: #e4f7ec !important; }
+.bg-teal-600 { background-color: #1fa774 !important; }
+.bg-teal-700 { background-color: #16845c !important; }
+.bg-teal-800 { background-color: #11714f !important; }
+.text-teal-600 { color: #1b8f63 !important; }
+.text-teal-700 { color: #16845c !important; }
+.text-teal-800 { color: #11714f !important; }
+.text-teal-100 { color: #dff5e9 !important; }
+.border-teal-200 { border-color: #bfe4cf !important; }
+.border-teal-600 { border-color: #1fa774 !important; }
+
 @keyframes pageEnter {
   from {
     opacity: 0;
@@ -292,7 +318,37 @@ textarea {
 }
 
 @media (max-width: 1023px) {
+  .sidebar-shell {
+    position: relative !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 12px !important;
+  }
+
+  .sidebar-shell > div {
+    min-height: auto !important;
+  }
+
+  .sidebar-nav {
+    overflow-x: auto;
+  }
+
+  .sidebar-nav > .space-y-1 {
+    display: flex;
+    min-width: max-content;
+    gap: 6px;
+  }
+
+  .sidebar-nav > .space-y-1 > * {
+    width: max-content;
+  }
+
+  .sidebar-nav > p {
+    display: none;
+  }
+
   .app-main {
+    margin-left: 0 !important;
     min-height: auto;
   }
 }
