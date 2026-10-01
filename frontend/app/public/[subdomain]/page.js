@@ -215,8 +215,16 @@ export default function PublicSchoolPage() {
       <header className="sticky top-0 z-50 border-b border-[#dcebe2]/90 bg-white/90 shadow-[0_8px_24px_rgba(24,55,42,0.05)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5 lg:px-8">
           <a href="#top" className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1fa774] text-lg font-black text-white shadow-[0_10px_24px_rgba(31,167,116,0.22)]">
-              K
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#1fa774] text-lg font-black text-white shadow-[0_10px_24px_rgba(31,167,116,0.22)]">
+              {company.logoUrl ? (
+                <img
+                  src={API_HOST + company.logoUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                'K'
+              )}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-[#193c2e]">{company.name}</p>
@@ -453,7 +461,9 @@ export default function PublicSchoolPage() {
                   Everyday school moments
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-[#71847a]">
-                  Explore public albums shared by the school.
+                  {company.galleryEnabled === false
+                    ? 'The school has currently hidden its public gallery.'
+                    : 'Explore public albums shared by the school.'}
                 </p>
               </div>
 
