@@ -70,7 +70,7 @@ router.post('/create', auth, async (req, res) => {
 // GET /api/fees/list
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const filter = { companyId };
     if (req.query.pending === 'true') {
       filter.pendingAmount = { $gt: 0 };
@@ -109,7 +109,6 @@ router.post('/pay', auth, async (req, res) => {
       fee.installments[installmentIndex].status = 'paid';
       fee.installments[installmentIndex].paidDate = new Date();
     } else {
-      // mark first pending
       const pendingIdx = fee.installments.findIndex(i => i.status === 'pending');
       if (pendingIdx >= 0) {
         fee.installments[pendingIdx].status = 'paid';
