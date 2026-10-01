@@ -60,7 +60,7 @@ router.post('/create', auth, (req, res, next) => {
 // GET /api/webinars/list
 router.get('/list', auth, async (req, res) => {
   try {
-    const companyId = req.query.companyId || req.companyId;
+    const companyId = req.companyId;
     const filter = { companyId };
     if (req.query.status) filter.status = req.query.status;
     const list = await Webinar.find(filter).sort({ eventDate: 1 });
