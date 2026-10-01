@@ -12,6 +12,7 @@ const links = [
   { href: '/feedback', label: 'Feedback', icon: 'feedback' },
   { href: '/webinars', label: 'Webinars', icon: 'webinars' },
   { href: '/fees', label: 'Fees', icon: 'fees' },
+  { href: '/settings', label: 'Settings', icon: 'settings' },
 ];
 
 function Icon({ name }) {
@@ -35,6 +36,7 @@ function Icon({ name }) {
     feedback: <><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z" /></>,
     webinars: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></>,
     fees: <><rect x="4" y="6" width="16" height="12" rx="2" /><path d="M7 10h10M7 14h5" /></>,
+    settings: <><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" /><circle cx="12" cy="12" r="5" /></>,
   };
 
   return <svg {...common}>{paths[name]}</svg>;
@@ -55,8 +57,16 @@ export default function Sidebar() {
       <div className="flex min-h-full w-full flex-col overflow-hidden rounded-[24px] border border-[#d9ebe1] bg-[#eff9f3] shadow-[0_22px_60px_rgba(24,55,42,0.10)]">
         <div className="border-b border-[#d9ebe1] p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1fa774] text-lg font-bold text-white shadow-[0_10px_20px_rgba(31,167,116,0.22)]">
-              K
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[#1fa774] text-lg font-bold text-white shadow-[0_10px_20px_rgba(31,167,116,0.22)]">
+              {company?.logoUrl ? (
+                <img
+                  src={(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000') + company.logoUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                'K'
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6e877b]">School OS</p>
