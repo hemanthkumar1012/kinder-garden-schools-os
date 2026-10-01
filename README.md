@@ -6,11 +6,12 @@ Admission + Gallery + Feedback + Webinars + Fees for Kinder Garden / Play / Pre 
 
 Backend: Express + Mongoose + CORS + dotenv + JWT + bcryptjs + multer + node-cron
 Frontend: Next.js App Router + Tailwind CSS
-Database: MongoDB
+Current local database: MongoDB
+Production target: Supabase Postgres + Supabase Storage + Supabase Edge Functions, with the frontend deployed separately.
 
 ## Local setup
 
-MongoDB must be running.
+MongoDB must be running for the current local Express/Mongoose implementation.
 
 ### Backend
 
@@ -79,30 +80,17 @@ Frontend: `http://localhost:3000` (or the next available port shown by Next.js)
 9. Create fee plans with clear payment installments and record payments.
 10. Share the public school experience at `/public/YOUR_SUBDOMAIN`.
 
-## Deployment
+## Production architecture
 
-### Backend
+Supabase is the production platform selected for the data and serverless backend layer. Supabase provides managed Postgres, Storage, Auth, Realtime and Edge Functions. Its Edge Functions use TypeScript/Deno and are deployed globally. citeturn757819search5turn757819search8
 
-A `render.yaml` blueprint is included for the backend.
+The existing Express/Mongoose backend is still the local implementation. Moving it to Supabase requires a deliberate PostgreSQL migration because the current data layer uses MongoDB/Mongoose. We will not silently mix the two data models.
 
-Set these Render environment variables:
+The intended production flow is:
 
-- `MONGO_URI`
-- `JWT_SECRET`
+`Next.js frontend → Supabase Edge Functions → Supabase Postgres / Storage`
 
-The backend health endpoint is `/health`.
-
-### Frontend
-
-Deploy the `frontend` directory as a Next.js application.
-
-Set:
-
-```env
-NEXT_PUBLIC_API_URL=https://YOUR-BACKEND-DOMAIN/api
-```
-
-Do not commit real `.env` or `.env.local` files.
+For Edge Functions, Supabase documents deployment with `supabase functions deploy`; deployed functions are served from the project Edge Functions URL. citeturn757819search1
 
 ## Scope
 
