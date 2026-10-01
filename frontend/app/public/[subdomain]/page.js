@@ -1,30 +1,42 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '../../../lib/api';
 
-const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const API_HOST =
+  process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
-const galleryCategories = [
-  'classroom',
-  'activity',
-  'event',
-  'festival',
-  'annual-day',
-  'sports',
+const GALLERY_CATEGORIES = [
+  { value: '', label: 'All' },
+  { value: 'classroom', label: 'Classroom' },
+  { value: 'activity', label: 'Activities' },
+  { value: 'event', label: 'Events' },
+  { value: 'festival', label: 'Festivals' },
+  { value: 'annual-day', label: 'Annual Day' },
+  { value: 'sports', label: 'Sports' },
 ];
+
+const topicLabels = {
+  parenting: 'Parenting',
+  'child-development': 'Child Development',
+  nutrition: 'Nutrition',
+  'admission-info': 'Admission Information',
+  'activity-demo': 'Activity Demo',
+};
 
 export default function PublicSchoolPage() {
   const { subdomain } = useParams();
+
   const [company, setCompany] = useState(null);
   const [companyId, setCompanyId] = useState('');
   const [classes, setClasses] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [feedback, setFeedback] = useState([]);
   const [webinars, setWebinars] = useState([]);
-  const [cat, setCat] = useState('');
-  const [msg, setMsg] = useState('');
+  const [galleryCategory, setGalleryCategory] = useState('');
+  const [message, setMessage] = useState('');
+  const [selectedWebinar, setSelectedWebinar] = useState(null);
 
   const [admForm, setAdmForm] = useState({
     childName: '',
@@ -65,27 +77,51 @@ export default function PublicSchoolPage() {
       })
       .catch(() => setCompany(null));
 
-    api.publicGallery(subdomain, cat || undefined).then(setGallery).catch(console.error);
     api.publicFeedback(subdomain).then(setFeedback).catch(console.error);
     api.publicWebinars(subdomain).then(setWebinars).catch(console.error);
-  }, [subdomain, cat]);
+  }, [subdomain]);
 
-  const submitAdmission = async (e) => {
-    e.preventDefault();
-    setMsg('');
+  useEffect(() => {
+    if (!subdomain) return;
+
+    api
+      .publicGallery(subdomain, galleryCategory || undefined)
+      .then(setGallery)
+      .catch(console.error);
+  }, [subdomain, galleryCategory]);
+
+  const upcoming = useMemo(
+    () =>
+      webinars.filter(
+        (item) => item.status === 'upcoming' || item.status === 'live'
+      ),
+    [webinars]
+  );
+
+  const availableClasses = classes.filter(
+    (item) => Number(item.studentsCount || 0) < Number(item.capacity || 0)
+  );
+
+  const showMessage = (text) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 5000);
+  };
+
+  const submitAdmission = async (event) => {
+    event.preventDefault();
 
     try {
-      const fd = new FormData();
-      fd.append('companyId', companyId);
+      const data = new FormData();
+      data.append('companyId', companyId);
 
       Object.entries(admForm).forEach(([key, value]) => {
-        if (value) fd.append(key, value);
+        if (value) data.append(key, value);
       });
 
-      fd.append('source', 'Website');
+      data.append('source', 'Website');
 
-      const res = await api.createAdmission(fd);
-      setMsg('Admission submitted! No: ' + res.admissionNo);
+      const result = await api.createAdmission(data);
+      showMessage('Admission inquiry submitted. Reference: ' + result.admissionNo);
 
       setAdmForm({
         childName: '',
@@ -96,18 +132,22 @@ export default function PublicSchoolPage() {
         message: '',
         photo: null,
       });
-    } catch (err) {
-      setMsg(err.message);
+    } catch (error) {
+      showMessage(error.message);
     }
   };
 
-  const submitReg = async (e) => {
-    e.preventDefault();
+  const submitRegistration = async (event) => {
+    event.preventDefault();
 
     try {
-      await api.registerWebinar({ ...regForm, companyId });
-      setMsg('Registered! Meeting link sent via WhatsApp.');
+      await api.registerWebinar({
+        ...regForm,
+        companyId,
+      });
 
+      showMessage('Registration submitted. The meeting link will be shared through WhatsApp.');
+      setSelectedWebinar(null);
       setRegForm({
         webinarId: '',
         parentName: '',
@@ -116,13 +156,13 @@ export default function PublicSchoolPage() {
         childAge: '',
         email: '',
       });
-    } catch (err) {
-      setMsg(err.message);
+    } catch (error) {
+      showMessage(error.message);
     }
   };
 
-  const submitFb = async (e) => {
-    e.preventDefault();
+  const submitFeedback = async (event) => {
+    event.preventDefault();
 
     try {
       await api.createFeedback({
@@ -131,7 +171,7 @@ export default function PublicSchoolPage() {
         rating: Number(fbForm.rating),
       });
 
-      setMsg('Thank you for your feedback!');
+      showMessage('Thank you. Your feedback has been submitted for school review.');
 
       setFbForm({
         parentName: '',
@@ -141,44 +181,52 @@ export default function PublicSchoolPage() {
         rating: 5,
         message: '',
       });
-    } catch (err) {
-      setMsg(err.message);
+    } catch (error) {
+      showMessage(error.message);
     }
   };
 
   if (company === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6faf8] text-sm text-[#71847a]">
-        School not found
+      <div className="flex min-h-screen items-center justify-center bg-[#f6faf8] px-5">
+        <div className="card max-w-md text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#79a18f]">
+            Kinder Garden Schools OS
+          </p>
+          <h1 className="mt-3 text-2xl font-bold text-[#193c2e]">School not found</h1>
+          <p className="mt-2 text-sm text-[#71847a]">
+            The school page you requested is not available.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!company) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6faf8] text-sm text-[#71847a]">
-        Loading school...
+      <div className="flex min-h-screen items-center justify-center bg-[#f6faf8] px-5">
+        <div className="text-sm text-[#71847a]">Loading school...</div>
       </div>
     );
   }
 
-  const upcoming = webinars.filter((webinar) => webinar.status === 'upcoming' || webinar.status === 'live');
-
   return (
     <div className="min-h-screen bg-[#f6faf8] text-[#18372a]">
-      <header className="sticky top-0 z-40 border-b border-[#dcebe2]/90 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-4 lg:px-8">
+      <header className="sticky top-0 z-50 border-b border-[#dcebe2]/90 bg-white/90 shadow-[0_8px_24px_rgba(24,55,42,0.05)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5 lg:px-8">
           <a href="#top" className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1fa774] text-lg font-bold text-white shadow-[0_10px_22px_rgba(31,167,116,0.22)]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1fa774] text-lg font-black text-white shadow-[0_10px_24px_rgba(31,167,116,0.22)]">
               K
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-[#193c2e]">{company.name}</p>
-              <p className="truncate text-xs text-[#7b8f86]">{company.location || company.schoolType}</p>
+              <p className="truncate text-xs text-[#7b8f86]">
+                {company.location || company.schoolType}
+              </p>
             </div>
           </a>
 
-          <nav className="hidden items-center gap-5 text-sm font-medium text-[#587068] lg:flex">
+          <nav className="ml-auto hidden items-center gap-5 text-sm font-medium text-[#5f756b] lg:flex">
             <a href="#classes" className="transition hover:text-[#16845c]">Classes</a>
             <a href="#gallery" className="transition hover:text-[#16845c]">Gallery</a>
             <a href="#feedback" className="transition hover:text-[#16845c]">Feedback</a>
@@ -189,76 +237,134 @@ export default function PublicSchoolPage() {
             Admission Inquiry
           </a>
         </div>
+
+        <div className="border-t border-[#edf3ef] px-5 py-2 lg:hidden">
+          <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto pb-1">
+            {[
+              ['#classes', 'Classes'],
+              ['#gallery', 'Gallery'],
+              ['#feedback', 'Feedback'],
+              ['#webinars', 'Webinars'],
+              ['#admission', 'Admissions'],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="whitespace-nowrap rounded-full bg-[#f2f8f4] px-3 py-1.5 text-xs font-semibold text-[#577268]"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
       </header>
 
       <main id="top">
         <section className="relative overflow-hidden border-b border-[#dcebe2] bg-white">
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#e8f7ef]" />
-          <div className="absolute -bottom-36 -left-20 h-80 w-80 rounded-full bg-[#eff9f3]" />
+          <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#e8f7ef]" />
+          <div className="absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-[#f0faf4]" />
 
-          <div className="relative mx-auto grid max-w-7xl gap-10 px-5 py-16 md:py-20 lg:grid-cols-[1.25fr_0.75fr] lg:px-8">
-            <div className="float-in max-w-3xl">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#6c9b87]">Kinder Garden School</p>
-              <h1 className="mt-4 text-4xl font-bold leading-tight tracking-[-0.04em] text-[#17382b] md:text-6xl">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-5 py-16 md:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
+            <div className="float-in self-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#c9e8d6] bg-[#eff9f3] px-3 py-1.5 text-xs font-bold text-[#21764f]">
+                <span className="h-2 w-2 rounded-full bg-[#1fa774]" />
+                {company.schoolType?.replace('-', ' ') || 'School'}
+              </span>
+
+              <p className="mt-5 text-xs font-bold uppercase tracking-[0.2em] text-[#76a18f]">
+                Kinder Garden School
+              </p>
+
+              <h1 className="mt-3 max-w-3xl text-4xl font-black leading-[1.05] tracking-[-0.045em] text-[#17382b] md:text-6xl">
                 {company.name}
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[#6b7f76]">
-                Explore classes, school activities, parent feedback and upcoming webinars, then send an admission inquiry directly to the school.
+
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#6b7f76] md:text-lg">
+                Discover classes, school activities, parent feedback and upcoming
+                sessions — then send an admission inquiry directly to the school.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href="#classes" className="btn btn-primary">Explore Classes</a>
-                <a href="#gallery" className="btn btn-secondary">View Gallery</a>
+                <a href="#admission" className="btn btn-primary px-5 py-3">
+                  Start Admission Inquiry
+                </a>
+                <a href="#classes" className="btn btn-secondary px-5 py-3">
+                  Explore Classes
+                </a>
               </div>
 
-              <div className="mt-8 flex flex-wrap gap-2">
-                <span className="badge badge-green">Classes</span>
-                <span className="badge badge-green">Gallery</span>
-                <span className="badge badge-green">Feedback</span>
-                <span className="badge badge-green">Webinars</span>
-                <span className="badge badge-green">Admissions</span>
+              <div className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ['Classes', classes.length],
+                  ['Available', availableClasses.length],
+                  ['Albums', gallery.length],
+                  ['Sessions', upcoming.length],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl border border-[#dcebe2] bg-white/80 p-3 shadow-[0_8px_25px_rgba(24,55,42,0.04)]"
+                  >
+                    <p className="text-xl font-bold text-[#1f6f52]">{value}</p>
+                    <p className="mt-1 text-[11px] font-medium text-[#82948d]">{label}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="card float-in self-end bg-[#eff9f3]">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">School details</p>
-
-              <div className="mt-5 space-y-4">
-                <div>
-                  <p className="text-xs text-[#82948d]">Location</p>
-                  <p className="mt-1 text-sm font-semibold text-[#234b3a]">{company.location || '-'}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-[#82948d]">School Type</p>
-                  <p className="mt-1 text-sm font-semibold capitalize text-[#234b3a]">
-                    {(company.schoolType || '').replace('-', ' ')}
+            <div className="float-in self-end">
+              <div className="card overflow-hidden bg-[#eff9f3] p-0">
+                <div className="border-b border-[#d0e8da] px-6 py-5">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">
+                    School details
                   </p>
+                  <h2 className="mt-2 text-2xl font-bold text-[#234b3a]">
+                    Everything families need
+                  </h2>
                 </div>
 
-                {company.upiId && (
-                  <div>
-                    <p className="text-xs text-[#82948d]">UPI Fee</p>
-                    <p className="mt-1 break-all text-sm font-semibold text-[#234b3a]">{company.upiId}</p>
+                <div className="space-y-4 p-6">
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs text-[#82948d]">Location</p>
+                    <p className="mt-1 text-sm font-semibold text-[#234b3a]">
+                      {company.location || 'Not provided'}
+                    </p>
                   </div>
-                )}
+
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs text-[#82948d]">School Type</p>
+                    <p className="mt-1 text-sm font-semibold capitalize text-[#234b3a]">
+                      {(company.schoolType || '').replace('-', ' ') || 'School'}
+                    </p>
+                  </div>
+
+                  {company.upiId && (
+                    <div className="rounded-2xl bg-white/80 p-4">
+                      <p className="text-xs text-[#82948d]">Fee Payment UPI</p>
+                      <p className="mt-1 break-all text-sm font-semibold text-[#234b3a]">
+                        {company.upiId}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {msg && (
-          <div className="mx-auto max-w-7xl px-5 pt-6 lg:px-8">
-            <div className="rounded-2xl border border-[#bfe4cf] bg-[#eaf8f0] px-4 py-3 text-sm font-medium text-[#19734b] shadow-[0_10px_30px_rgba(31,167,116,0.06)]">
-              {msg}
+        {message && (
+          <div className="sticky top-[105px] z-30 px-5 pt-4 lg:top-[72px] lg:px-8">
+            <div className="mx-auto max-w-7xl rounded-2xl border border-[#bfe4cf] bg-[#eaf8f0] px-4 py-3 text-sm font-semibold text-[#19734b] shadow-[0_12px_30px_rgba(31,167,116,0.08)]">
+              {message}
             </div>
           </div>
         )}
 
-        <section id="classes" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-16 lg:px-8">
+        <section id="classes" className="scroll-mt-28 mx-auto max-w-7xl px-5 py-16 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#74a08f]">Classes</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#193c2e]">Learning groups and capacity</h2>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-[#193c2e]">
+              Find the right learning group
+            </h2>
             <p className="mt-3 text-sm leading-6 text-[#71847a]">
               Browse the classes configured by the school with age group, capacity and annual fee information.
             </p>
@@ -266,13 +372,20 @@ export default function PublicSchoolPage() {
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {classes.map((item) => {
-              const full = item.studentsCount >= item.capacity;
+              const full = Number(item.studentsCount || 0) >= Number(item.capacity || 0);
+              const remaining = Math.max(
+                0,
+                Number(item.capacity || 0) - Number(item.studentsCount || 0)
+              );
 
               return (
-                <div key={item._id} className="card group">
+                <article
+                  key={item._id}
+                  className="card group transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(24,55,42,0.1)]"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-lg font-semibold text-[#234b3a]">{item.name}</p>
+                      <p className="text-lg font-bold text-[#234b3a]">{item.name}</p>
                       <p className="mt-1 text-sm text-[#7b8f86]">{item.ageGroup}</p>
                     </div>
 
@@ -281,162 +394,222 @@ export default function PublicSchoolPage() {
                     </span>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="mt-6 h-2 overflow-hidden rounded-full bg-[#e8f1eb]">
+                    <div
+                      className="h-full rounded-full bg-[#1fa774] transition-all"
+                      style={{
+                        width:
+                          Math.min(
+                            100,
+                            Number(item.capacity)
+                              ? (Number(item.studentsCount || 0) / Number(item.capacity)) * 100
+                              : 0
+                          ) + '%',
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-[#82948d]">
+                      {item.studentsCount || 0}/{item.capacity || 0} students
+                    </span>
+                    <span className="font-semibold text-[#397659]">
+                      {full ? 'Currently full' : remaining + ' seats available'}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-[#f7fbf8] p-4">
-                      <p className="text-xs text-[#82948d]">Capacity</p>
+                      <p className="text-xs text-[#82948d]">Age Group</p>
                       <p className="mt-1 text-sm font-semibold text-[#234b3a]">
-                        {item.studentsCount}/{item.capacity}
+                        {item.ageGroup || '-'}
                       </p>
                     </div>
                     <div className="rounded-2xl bg-[#f7fbf8] p-4">
                       <p className="text-xs text-[#82948d]">Annual Fees</p>
                       <p className="mt-1 text-sm font-semibold text-[#234b3a]">
-                        ₹{item.feesAnnual?.toLocaleString()}
+                        ₹{Number(item.feesAnnual || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
 
             {classes.length === 0 && (
-              <p className="text-sm text-[#8a9b93]">No public classes available.</p>
+              <div className="rounded-3xl border border-dashed border-[#dcebe2] bg-white px-5 py-12 text-center">
+                <p className="font-medium text-[#587068]">No public classes available</p>
+              </div>
             )}
           </div>
         </section>
 
-        <section id="gallery" className="scroll-mt-24 border-y border-[#dcebe2] bg-white">
+        <section id="gallery" className="scroll-mt-28 border-y border-[#dcebe2] bg-white">
           <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#74a08f]">Gallery</p>
-                <h2 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#193c2e]">School moments and activities</h2>
+                <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-[#193c2e]">
+                  Everyday school moments
+                </h2>
                 <p className="mt-3 text-sm leading-6 text-[#71847a]">
-                  Public gallery albums can be filtered by the categories configured in the school workspace.
+                  Explore public albums shared by the school.
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button
-                  className={!cat ? 'btn btn-primary text-xs' : 'btn btn-secondary text-xs'}
-                  onClick={() => setCat('')}
-                >
-                  All
-                </button>
-                {galleryCategories.map((category) => (
+                {GALLERY_CATEGORIES.map((category) => (
                   <button
-                    key={category}
-                    className={cat === category ? 'btn btn-primary text-xs' : 'btn btn-secondary text-xs'}
-                    onClick={() => setCat(category)}
+                    key={category.value}
+                    className={
+                      galleryCategory === category.value
+                        ? 'btn btn-primary text-xs'
+                        : 'btn btn-secondary text-xs'
+                    }
+                    onClick={() => setGalleryCategory(category.value)}
                   >
-                    {category}
+                    {category.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2">
+            <div className="mt-8 grid gap-5 lg:grid-cols-2">
               {gallery.map((album) => (
-                <article key={album._id} className="card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-semibold text-[#234b3a]">{album.title}</h3>
-                      <p className="mt-1 text-xs uppercase tracking-[0.08em] text-[#82948d]">
-                        {album.category}
-                        {album.eventDate ? ' · ' + new Date(album.eventDate).toLocaleDateString() : ''}
-                      </p>
+                <article
+                  key={album._id}
+                  className="card overflow-hidden p-0 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(24,55,42,0.09)]"
+                >
+                  <div className="border-b border-[#e5eee9] px-5 py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-lg font-bold text-[#234b3a]">
+                          {album.title}
+                        </h3>
+                        <p className="mt-1 text-xs uppercase tracking-[0.08em] text-[#82948d]">
+                          {GALLERY_CATEGORIES.find((item) => item.value === album.category)?.label ||
+                            album.category}
+                          {album.eventDate
+                            ? ' · ' + new Date(album.eventDate).toLocaleDateString()
+                            : ''}
+                        </p>
+                      </div>
+
+                      <span className="badge badge-gray shrink-0">
+                        {album.images?.length || 0} images
+                      </span>
                     </div>
 
-                    <span className="badge badge-gray">{album.images?.length || 0} images</span>
+                    {album.description && (
+                      <p className="mt-3 text-sm leading-6 text-[#6f8279]">
+                        {album.description}
+                      </p>
+                    )}
                   </div>
 
-                  {album.description && (
-                    <p className="mt-4 text-sm leading-6 text-[#6f8279]">{album.description}</p>
-                  )}
-
-                  <div className="mt-5 grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-2 bg-[#f4faf6] p-3">
                     {(album.images || []).slice(0, 4).map((image, index) => (
-                      <div key={index} className="aspect-square overflow-hidden rounded-xl bg-[#eef6f1]">
+                      <div
+                        key={index}
+                        className="aspect-square overflow-hidden rounded-xl bg-[#eaf3ed]"
+                      >
                         <img
                           src={API_HOST + image}
-                          alt={album.title}
-                          className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                          alt={album.title + ' ' + (index + 1)}
+                          className="h-full w-full object-cover transition duration-500 hover:scale-110"
                         />
                       </div>
                     ))}
                   </div>
 
-                  {(album.images || []).length > 4 && (
-                    <p className="mt-3 text-xs font-medium text-[#71847a]">
-                      +{album.images.length - 4} more
-                    </p>
+                  {album.images?.length > 4 && (
+                    <div className="px-5 py-3 text-xs font-semibold text-[#71847a]">
+                      +{album.images.length - 4} more photos in this album
+                    </div>
                   )}
                 </article>
               ))}
 
               {gallery.length === 0 && (
-                <p className="text-sm text-[#8a9b93]">No public albums available.</p>
+                <div className="rounded-3xl border border-dashed border-[#dcebe2] bg-[#f8fcfa] px-5 py-12 text-center">
+                  <p className="font-medium text-[#587068]">No public albums available</p>
+                </div>
               )}
             </div>
           </div>
         </section>
 
-        <section id="feedback" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-16 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+        <section id="feedback" className="scroll-mt-28 mx-auto max-w-7xl px-5 py-16 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[1fr_390px]">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#74a08f]">Feedback</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#193c2e]">Parent feedback</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-[#193c2e]">
+                What parents are saying
+              </h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#71847a]">
-                Approved public feedback helps families understand the school experience.
+                Approved public feedback is displayed here for families exploring the school.
               </p>
 
               <div className="mt-8 grid gap-4 md:grid-cols-2">
                 {feedback.map((item) => (
                   <article key={item._id} className="card">
-                    <div className="text-lg tracking-[0.1em] text-[#d99d2d]">
-                      {'★'.repeat(item.rating)}
-                      {'☆'.repeat(5 - item.rating)}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-lg tracking-[0.12em] text-[#d39a29]">
+                        {'★'.repeat(Number(item.rating || 0))}
+                        {'☆'.repeat(Math.max(0, 5 - Number(item.rating || 0)))}
+                      </div>
+                      <span className="text-xs text-[#879790]">{item.rating}/5</span>
                     </div>
-                    <p className="mt-4 text-sm leading-6 text-[#4e655b]">{item.message}</p>
-                    <p className="mt-4 text-xs text-[#83948c]">
-                      — {item.parentName}
-                      {item.childName ? ' (' + item.childName + ')' : ''}
+
+                    <p className="mt-4 text-sm leading-6 text-[#4e655b]">
+                      {item.message}
+                    </p>
+
+                    <p className="mt-5 text-xs font-semibold text-[#6e8378]">
+                      {item.parentName}
+                      {item.childName ? ' · Parent of ' + item.childName : ''}
                     </p>
                   </article>
                 ))}
 
                 {feedback.length === 0 && (
-                  <p className="text-sm text-[#8a9b93]">No public feedback yet.</p>
+                  <div className="rounded-3xl border border-dashed border-[#dcebe2] bg-white px-5 py-12 text-center">
+                    <p className="font-medium text-[#587068]">No public feedback yet</p>
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="card h-fit bg-[#eff9f3]">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">Share feedback</p>
-              <h3 className="mt-2 text-xl font-semibold text-[#234b3a]">Tell the school about your experience</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">
+                Share feedback
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-[#234b3a]">
+                Tell the school about your experience
+              </h3>
 
-              <form onSubmit={submitFb} className="mt-6 space-y-3">
+              <form onSubmit={submitFeedback} className="mt-6 space-y-3">
                 <input
-                  className="input"
+                  className="input bg-white"
                   placeholder="Parent Name"
                   value={fbForm.parentName}
                   onChange={(e) => setFbForm({ ...fbForm, parentName: e.target.value })}
                   required
                 />
                 <input
-                  className="input"
+                  className="input bg-white"
                   placeholder="Phone"
                   value={fbForm.parentPhone}
                   onChange={(e) => setFbForm({ ...fbForm, parentPhone: e.target.value })}
                 />
                 <input
-                  className="input"
+                  className="input bg-white"
                   placeholder="Child Name"
                   value={fbForm.childName}
                   onChange={(e) => setFbForm({ ...fbForm, childName: e.target.value })}
                 />
                 <select
-                  className="input"
+                  className="input bg-white"
                   value={fbForm.classId}
                   onChange={(e) => setFbForm({ ...fbForm, classId: e.target.value })}
                 >
@@ -446,7 +619,7 @@ export default function PublicSchoolPage() {
                   ))}
                 </select>
                 <select
-                  className="input"
+                  className="input bg-white"
                   value={fbForm.rating}
                   onChange={(e) => setFbForm({ ...fbForm, rating: e.target.value })}
                 >
@@ -455,8 +628,8 @@ export default function PublicSchoolPage() {
                   ))}
                 </select>
                 <textarea
-                  className="input"
-                  placeholder="Message"
+                  className="input bg-white"
+                  placeholder="Your feedback"
                   value={fbForm.message}
                   onChange={(e) => setFbForm({ ...fbForm, message: e.target.value })}
                   rows={4}
@@ -469,49 +642,71 @@ export default function PublicSchoolPage() {
           </div>
         </section>
 
-        <section id="webinars" className="scroll-mt-24 border-y border-[#dcebe2] bg-white">
+        <section id="webinars" className="scroll-mt-28 border-y border-[#dcebe2] bg-white">
           <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#74a08f]">Webinars</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#193c2e]">Upcoming sessions</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-[#193c2e]">
+                Upcoming parent sessions
+              </h2>
               <p className="mt-3 text-sm leading-6 text-[#71847a]">
-                Browse upcoming parenting, child-development, nutrition, admission and activity sessions.
+                Register for parenting, child-development, nutrition, admission and activity sessions.
               </p>
             </div>
 
-            <div className="mt-8 space-y-4">
+            <div className="mt-8 grid gap-4">
               {upcoming.map((item) => (
-                <article key={item._id} className="card flex flex-col gap-5 md:flex-row md:items-center">
+                <article
+                  key={item._id}
+                  className="card flex flex-col gap-5 md:flex-row md:items-center"
+                >
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={item.status === 'live' ? 'badge badge-green' : 'badge badge-blue'}>
-                        {item.status}
+                        {item.status === 'live' ? 'Live Now' : 'Upcoming'}
                       </span>
-                      <span className="text-xs text-[#83948c]">{item.topic}</span>
+                      <span className="badge badge-gray">
+                        {topicLabels[item.topic] || item.topic}
+                      </span>
                     </div>
 
-                    <h3 className="mt-3 text-xl font-semibold text-[#234b3a]">{item.title}</h3>
+                    <h3 className="mt-3 text-xl font-bold text-[#234b3a]">{item.title}</h3>
 
-                    <p className="mt-2 text-sm text-[#70837a]">
-                      {item.eventDate ? new Date(item.eventDate).toLocaleDateString() : ''}
+                    <p className="mt-2 text-sm text-[#6f8279]">
+                      {item.eventDate
+                        ? new Date(item.eventDate).toLocaleDateString()
+                        : 'Date not set'}
                       {' · '}
                       {item.slot}
                       {' · '}
-                      {item.durationMins} mins
+                      {item.durationMins} minutes
                     </p>
 
                     {item.description && (
-                      <p className="mt-3 text-sm leading-6 text-[#6d8178]">{item.description}</p>
+                      <p className="mt-3 max-w-3xl text-sm leading-6 text-[#70837a]">
+                        {item.description}
+                      </p>
                     )}
 
-                    <p className="mt-3 text-xs text-[#80928a]">
-                      Speaker: {item.speakerName} · {item.registeredCount}/{item.maxParticipants} registered
-                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#80928a]">
+                      <span className="rounded-full bg-[#f3f8f5] px-3 py-1.5">
+                        Speaker: {item.speakerName || 'Not provided'}
+                      </span>
+                      <span className="rounded-full bg-[#f3f8f5] px-3 py-1.5">
+                        {item.registeredCount}/{item.maxParticipants} registered
+                      </span>
+                    </div>
                   </div>
 
                   <button
-                    className="btn btn-primary self-start md:self-center"
-                    onClick={() => setRegForm({ ...regForm, webinarId: item._id })}
+                    className="btn btn-primary shrink-0 self-start md:self-center"
+                    onClick={() => {
+                      setSelectedWebinar(item);
+                      setRegForm((current) => ({
+                        ...current,
+                        webinarId: item._id,
+                      }));
+                    }}
                   >
                     Register
                   </button>
@@ -519,50 +714,83 @@ export default function PublicSchoolPage() {
               ))}
 
               {upcoming.length === 0 && (
-                <p className="text-sm text-[#8a9b93]">No upcoming webinars.</p>
+                <div className="rounded-3xl border border-dashed border-[#dcebe2] bg-[#f8fcfa] px-5 py-12 text-center">
+                  <p className="font-medium text-[#587068]">No upcoming webinars</p>
+                </div>
               )}
             </div>
 
-            {regForm.webinarId && (
-              <div className="mt-6 max-w-md">
+            {selectedWebinar && (
+              <div className="mt-6 max-w-2xl">
                 <div className="card bg-[#eff9f3]">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">Webinar Registration</p>
-                  <form onSubmit={submitReg} className="mt-5 space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#739a89]">
+                        Webinar Registration
+                      </p>
+                      <h3 className="mt-1 text-xl font-bold text-[#234b3a]">
+                        {selectedWebinar.title}
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[#6d8178] underline underline-offset-4"
+                      onClick={() => setSelectedWebinar(null)}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <form onSubmit={submitRegistration} className="mt-6 grid gap-3 sm:grid-cols-2">
                     <input
-                      className="input"
+                      className="input bg-white"
                       placeholder="Parent Name"
                       value={regForm.parentName}
-                      onChange={(e) => setRegForm({ ...regForm, parentName: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, parentName: e.target.value })
+                      }
                       required
                     />
                     <input
-                      className="input"
+                      className="input bg-white"
                       placeholder="Phone"
                       value={regForm.parentPhone}
-                      onChange={(e) => setRegForm({ ...regForm, parentPhone: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, parentPhone: e.target.value })
+                      }
                       required
                     />
                     <input
-                      className="input"
+                      className="input bg-white"
                       placeholder="Child Name"
                       value={regForm.childName}
-                      onChange={(e) => setRegForm({ ...regForm, childName: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, childName: e.target.value })
+                      }
                     />
                     <input
-                      className="input"
+                      className="input bg-white"
                       type="number"
+                      min="1"
                       placeholder="Child Age"
                       value={regForm.childAge}
-                      onChange={(e) => setRegForm({ ...regForm, childAge: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, childAge: e.target.value })
+                      }
                     />
                     <input
-                      className="input"
+                      className="input bg-white sm:col-span-2"
                       type="email"
                       placeholder="Email"
                       value={regForm.email}
-                      onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, email: e.target.value })
+                      }
                     />
-                    <button type="submit" className="btn btn-primary w-full">Register</button>
+                    <button type="submit" className="btn btn-primary sm:col-span-2">
+                      Register for Session
+                    </button>
                   </form>
                 </div>
               </div>
@@ -570,33 +798,56 @@ export default function PublicSchoolPage() {
           </div>
         </section>
 
-        <section id="admission" className="scroll-mt-24 mx-auto max-w-7xl px-5 py-16 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
+        <section id="admission" className="scroll-mt-28 mx-auto max-w-7xl px-5 py-16 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="self-start">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#74a08f]">Admissions</p>
-              <h2 className="mt-2 text-3xl font-bold tracking-[-0.03em] text-[#193c2e]">Send an admission inquiry</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-[#193c2e]">
+                Start your admission inquiry
+              </h2>
               <p className="mt-4 max-w-xl text-sm leading-6 text-[#71847a]">
-                Share the child and parent details requested by the school. The inquiry will enter the school admission workflow.
+                Share the child and parent details requested by the school. The inquiry
+                will enter the school admission workflow.
               </p>
 
               <div className="mt-8 rounded-3xl border border-[#dcebe2] bg-[#eff9f3] p-6">
-                <p className="text-sm font-semibold text-[#234b3a]">Interested class</p>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {classes.map((item) => (
-                    <button
-                      key={item._id}
-                      type="button"
-                      className={admForm.classId === item._id ? 'btn btn-primary justify-start' : 'btn btn-secondary justify-start'}
-                      onClick={() => setAdmForm({ ...admForm, classId: item._id })}
-                    >
-                      {item.name}
-                    </button>
-                  ))}
+                <p className="text-sm font-bold text-[#234b3a]">Choose an interested class</p>
+
+                <div className="mt-4 space-y-2">
+                  {classes.map((item) => {
+                    const full =
+                      Number(item.studentsCount || 0) >= Number(item.capacity || 0);
+
+                    return (
+                      <button
+                        key={item._id}
+                        type="button"
+                        disabled={full}
+                        className={
+                          admForm.classId === item._id
+                            ? 'btn btn-primary w-full justify-between'
+                            : 'btn btn-secondary w-full justify-between'
+                        }
+                        onClick={() => setAdmForm({ ...admForm, classId: item._id })}
+                      >
+                        <span>{item.name}</span>
+                        <span className="text-xs opacity-70">
+                          {full
+                            ? 'Full'
+                            : Math.max(0, item.capacity - item.studentsCount) + ' seats'}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
             <div className="card">
+              <div className="mb-5 rounded-2xl bg-[#f7fbf8] px-4 py-3 text-sm text-[#5f756b]">
+                Please provide accurate contact details so the school can follow up with you.
+              </div>
+
               <form onSubmit={submitAdmission} className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="label">Child Name *</label>
@@ -609,10 +860,11 @@ export default function PublicSchoolPage() {
                 </div>
 
                 <div>
-                  <label className="label">Age</label>
+                  <label className="label">Child Age</label>
                   <input
                     className="input"
                     type="number"
+                    min="1"
                     value={admForm.age}
                     onChange={(e) => setAdmForm({ ...admForm, age: e.target.value })}
                   />
@@ -639,47 +891,56 @@ export default function PublicSchoolPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="label">Class</label>
+                  <label className="label">Interested Class</label>
                   <select
                     className="input"
                     value={admForm.classId}
                     onChange={(e) => setAdmForm({ ...admForm, classId: e.target.value })}
                   >
-                    <option value="">Interested Class</option>
+                    <option value="">Select a class</option>
                     {classes.map((item) => (
-                      <option key={item._id} value={item._id}>{item.name}</option>
+                      <option key={item._id} value={item._id}>
+                        {item.name}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="label">Message / Special Needs</label>
+                  <label className="label">Message</label>
                   <textarea
                     className="input"
                     rows={4}
+                    placeholder="Any question or message for the school"
                     value={admForm.message}
                     onChange={(e) => setAdmForm({ ...admForm, message: e.target.value })}
                   />
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="label">Photo</label>
+                  <label className="label">Child Photo</label>
                   <input
                     className="input"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setAdmForm({ ...admForm, photo: e.target.files[0] })}
+                    onChange={(e) =>
+                      setAdmForm({
+                        ...admForm,
+                        photo: e.target.files?.[0] || null,
+                      })
+                    }
                   />
                 </div>
 
-                <button type="submit" className="btn btn-primary sm:col-span-2">
+                <button type="submit" className="btn btn-primary sm:col-span-2 py-3">
                   Submit Admission Inquiry
                 </button>
               </form>
 
               {company.upiId && (
-                <div className="mt-4 rounded-2xl bg-[#f5fbf7] px-4 py-3 text-xs text-[#71847a]">
-                  UPI Fee: <span className="font-semibold text-[#416055]">{company.upiId}</span>
+                <div className="mt-4 rounded-2xl border border-[#dcebe2] bg-[#f7fbf8] px-4 py-3 text-xs text-[#71847a]">
+                  Fee payment UPI:{' '}
+                  <span className="font-semibold text-[#416055]">{company.upiId}</span>
                 </div>
               )}
             </div>
