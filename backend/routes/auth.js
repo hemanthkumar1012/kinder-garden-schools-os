@@ -6,6 +6,22 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kinder-garden-secret-key-2026';
 
+function companySummary(company) {
+  return {
+    id: company._id,
+    name: company.name,
+    subdomain: company.subdomain,
+    ownerEmail: company.ownerEmail,
+    schoolType: company.schoolType,
+    location: company.location,
+    upiId: company.upiId,
+    language: company.language,
+    logoUrl: company.logoUrl,
+    galleryEnabled: company.galleryEnabled,
+    feedbackApprovalRequired: company.feedbackApprovalRequired,
+  };
+}
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -29,14 +45,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: company._id, subdomain: company.subdomain }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({
       token,
-      company: {
-        id: company._id,
-        name: company.name,
-        subdomain: company.subdomain,
-        ownerEmail: company.ownerEmail,
-        schoolType: company.schoolType,
-        location: company.location,
-      },
+      company: companySummary(company),
     });
   } catch (err) {
     console.error(err);
@@ -62,16 +71,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: company._id, subdomain: company.subdomain }, JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
-      company: {
-        id: company._id,
-        name: company.name,
-        subdomain: company.subdomain,
-        ownerEmail: company.ownerEmail,
-        schoolType: company.schoolType,
-        location: company.location,
-        upiId: company.upiId,
-        language: company.language,
-      },
+      company: companySummary(company),
     });
   } catch (err) {
     console.error(err);
